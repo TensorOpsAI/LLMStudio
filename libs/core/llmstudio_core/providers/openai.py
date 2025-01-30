@@ -39,6 +39,7 @@ class OpenAIProvider(ProviderCore):
                     else request.chat_input
                 ),
                 stream=True,
+                stream_options={"include_usage": True},
                 **request.parameters,
             )
         except openai._exceptions.APIError as e:

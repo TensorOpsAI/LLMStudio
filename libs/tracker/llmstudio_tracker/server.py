@@ -6,6 +6,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from llmstudio_tracker.config import TRACKING_HOST, TRACKING_PORT
 from llmstudio_tracker.logs.endpoints import LogsRoutes
+from llmstudio_tracker.prompt_manager.endpoints import PromptsRoutes
 from llmstudio_tracker.session.endpoints import SessionsRoutes
 from llmstudio_tracker.utils import get_current_version
 
@@ -42,6 +43,7 @@ def create_tracking_app(started_event: Event) -> FastAPI:
     tracking_router = APIRouter(prefix=TRACKING_BASE_ENDPOINT)
     LogsRoutes(tracking_router)
     SessionsRoutes(tracking_router)
+    PromptsRoutes(tracking_router)
 
     app.include_router(tracking_router)
 

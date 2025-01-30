@@ -18,7 +18,12 @@ chat_llm = ChatLLMstudio(llm=llm, model = "gpt-4o-mini", parameters={"temperatur
 
 # %%
 from langchain.tools import tool
-from langchain.agents import AgentType, initialize_agent
+from langchain.agents import AgentType, initialize_agent, AgentExecutor
+
+from langchain.agents.openai_functions_agent.base import (
+    create_openai_functions_agent,
+)
+from langchain import hub
 
 # # %%
 # print("\n", chat_llm.invoke('Hello'))
@@ -192,9 +197,16 @@ def assistant(question: str)->str:
     tools = [power_disco_ball, start_music, dim_lights]
     print(tools)
 
-    #rebuild agent with new tools
-    agent_executor = initialize_agent(
-        tools, chat_llm, agent=AgentType.OPENAI_FUNCTIONS, verbose = True, debug = True
+    #rebuild agent with new tools - This is the old outdated way of using agents in langchain
+    #agent_executor = initialize_agent(
+    #    tools, chat_llm, agent=AgentType.OPENAI_FUNCTIONS, verbose = True, debug = True
+    #) 
+    prompt = hub.pull("hwchase17/openai-functions-agent")
+    
+    agent = create_openai_functions_agent(llm=chat_llm, tools=tools, prompt=prompt)
+    
+    agent_executor = AgentExecutor(
+        agent=agent, tools=tools, verbose=True, return_intermediate_steps=True
     )
 
     response = agent_executor.invoke(

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "llmstudio-core"
-version = "1.0.2"
+version = "1.0.3a0"
 description = "LLMStudio core capabilities for routing llm calls for any vendor. No proxy server required. For that use llmstudio[proxy]"
 authors = ["Cláudio Lemos <claudio.lemos@tensorops.ai>"]
 license = "MIT"

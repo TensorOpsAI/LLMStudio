@@ -33,6 +33,7 @@ class ModelConfig(BaseModel):
     max_tokens: Optional[int] = Field(default=None, alias="max_completion_tokens")
     max_completion_tokens: Optional[int] = None
     input_token_cost: Union[float, List["CostRange"]]
+    cached_token_cost: Optional[Union[float, List["CostRange"]]] = None
     output_token_cost: Union[float, List["CostRange"]]
 
 

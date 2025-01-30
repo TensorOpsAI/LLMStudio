@@ -46,7 +46,7 @@ class ChatLLMstudio(BaseChatModel):
     def _create_chat_result(self, response: Any) -> ChatResult:
         generations = []
         if not isinstance(response, dict):
-            response = response.dict()
+            response = response.model_dump()
         for res in response["choices"]:
             message = convert_dict_to_message(res["message"])
             generation_info = dict(finish_reason=res.get("finish_reason"))

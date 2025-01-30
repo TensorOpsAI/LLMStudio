@@ -62,7 +62,25 @@ class AzureProvider(ProviderCore):
         return self.generate_client(request=request)
 
     def generate_client(self, request: ChatRequest) -> Any:
-        """Generate an AzureOpenAI client"""
+        """
+        Generates an AzureOpenAI client for processing a chat request.
+
+        This method prepares and configures the arguments required to create a client
+        request to AzureOpenAI's chat completions API. It determines model-specific
+        configurations (e.g., whether tools or functions are enabled) and combines
+        these with the base arguments for the API call.
+
+        Args:
+            request (ChatRequest): The chat request object containing the model,
+                                parameters, and other necessary details.
+
+        Returns:
+            Any: The result of the chat completions API call.
+
+        Raises:
+            ProviderError: If there is an issue with the API connection or an error
+                        returned from the API.
+        """
 
         self.is_llama = "llama" in request.model.lower()
         self.is_openai = "gpt" in request.model.lower()
@@ -72,7 +90,6 @@ class AzureProvider(ProviderCore):
         try:
             messages = self.prepare_messages(request)
 
-            # Prepare the optional tool-related arguments
             tool_args = {}
             if not self.is_llama and self.has_tools and self.is_openai:
                 tool_args = {
@@ -80,7 +97,6 @@ class AzureProvider(ProviderCore):
                     "tool_choice": "auto" if request.parameters.get("tools") else None,
                 }
 
-            # Prepare the optional function-related arguments
             function_args = {}
             if not self.is_llama and self.has_functions and self.is_openai:
                 function_args = {
@@ -90,14 +106,12 @@ class AzureProvider(ProviderCore):
                     else None,
                 }
 
-            # Prepare the base arguments
             base_args = {
                 "model": request.model,
                 "messages": messages,
                 "stream": True,
             }
 
-            # Combine all arguments
             combined_args = {
                 **base_args,
                 **tool_args,
@@ -116,13 +130,13 @@ class AzureProvider(ProviderCore):
         if self.is_llama and (self.has_tools or self.has_functions):
             user_message = self.convert_to_openai_format(request.chat_input)
             content = "<|begin_of_text|>"
-            content = self.add_system_message(
+            content = self.build_llama_system_message(
                 user_message,
                 content,
                 request.parameters.get("tools"),
                 request.parameters.get("functions"),
             )
-            content = self.add_conversation(user_message, content)
+            content = self.build_llama_conversation(user_message, content)
             return [{"role": "user", "content": content}]
         else:
             return (
@@ -139,6 +153,20 @@ class AzureProvider(ProviderCore):
             yield chunk
 
     def parse_response(self, response: AsyncGenerator, **kwargs) -> Any:
+        """
+        Processes a generator response and yields processed chunks.
+
+        If `is_llama` is True and tools or functions are enabled, it processes the response
+        using `handle_tool_response`. Otherwise, it processes each chunk and yields only those
+        containing "choices".
+
+        Args:
+            response (Generator): The response generator to process.
+            **kwargs: Additional arguments for tool handling.
+
+        Yields:
+            Any: Processed response chunks.
+        """
         if self.is_llama and (self.has_tools or self.has_functions):
             for chunk in self.handle_tool_response(response, **kwargs):
                 if chunk:
@@ -388,9 +416,25 @@ class AzureProvider(ProviderCore):
             return [{"role": "user", "content": message}]
         return message
 
-    def add_system_message(
+    def build_llama_system_message(
         self, openai_message: list, llama_message: str, tools: list, functions: list
     ) -> str:
+        """
+        Builds a complete system message for Llama based on OpenAI's message, tools, and functions.
+
+        If a system message is present in the OpenAI message, it is included in the result.
+        Otherwise, a default system message is used. Additional tool and function instructions
+        are appended if provided.
+
+        Args:
+            openai_message (list): List of OpenAI messages.
+            llama_message (str): The message to prepend to the system message.
+            tools (list): List of tools to include in the system message.
+            functions (list): List of functions to include in the system message.
+
+        Returns:
+            str: The formatted system message combined with Llama message.
+        """
         system_message = ""
         system_message_found = False
         for message in openai_message:
@@ -407,15 +451,31 @@ class AzureProvider(ProviderCore):
       """
 
         if tools:
-            system_message = system_message + self.add_tool_instructions(tools)
+            system_message = system_message + self.build_tool_instructions(tools)
 
         if functions:
-            system_message = system_message + self.add_function_instructions(functions)
+            system_message = system_message + self.build_function_instructions(
+                functions
+            )
 
         end_tag = "\n<|eot_id|>"
         return llama_message + system_message + end_tag
 
-    def add_tool_instructions(self, tools: list) -> str:
+    def build_tool_instructions(self, tools: list) -> str:
+        """
+        Builds a detailed instructional prompt for tools available to the assistant.
+
+        This function generates a message describing the available tools, focusing on tools
+        of type "function." It explains to the LLM how to use each tool and provides an example of the
+        correct response format for function calls.
+
+        Args:
+            tools (list): A list of tool dictionaries, where each dictionary contains tool
+            details such as type, function name, description, and parameters.
+
+        Returns:
+            str: A formatted string detailing the tool instructions and usage examples.
+        """
         tool_prompt = """
     You have access to the following tools:
     """
@@ -449,7 +509,21 @@ NOTE: There is no prefix before the symbol '§' and nothing comes after the call
 
         return tool_prompt
 
-    def add_function_instructions(self, functions: list) -> str:
+    def build_function_instructions(self, functions: list) -> str:
+        """
+        Builds a detailed instructional prompt for available functions.
+
+        This method creates a message describing the functions accessible to the assistant.
+        It includes the function name, description, and required parameters, along with
+        specific guidelines for calling functions.
+
+        Args:
+            functions (list): A list of function dictionaries, each containing details such as
+            name, description, and parameters.
+
+        Returns:
+            str: A formatted string with instructions on using the provided functions.
+        """
         function_prompt = """
 You have access to the following functions:
 """
@@ -479,35 +553,60 @@ Reminder:
 """
         return function_prompt
 
-    def add_conversation(self, openai_message: list, llama_message: str) -> str:
+    def build_llama_conversation(self, openai_message: list, llama_message: str) -> str:
+        """
+        Appends the OpenAI message to the Llama message while formatting OpenAI messages.
+
+        This function iterates through a list of OpenAI messages and formats them for inclusion
+        in a Llama message. It handles user messages that might include nested content (lists of
+        messages) by safely evaluating the content. System messages are skipped.
+
+        Args:
+            openai_message (list): A list of dictionaries representing the OpenAI messages. Each
+                                dictionary should have "role" and "content" keys.
+            llama_message (str): The initial Llama message to which the conversation is appended.
+
+        Returns:
+            str: The Llama message with the conversation appended.
+        """
         conversation_parts = []
         for message in openai_message:
             if message["role"] == "system":
                 continue
             elif message["role"] == "user" and isinstance(message["content"], str):
                 try:
-                    # Attempt to safely evaluate the string to a Python object
                     content_as_list = ast.literal_eval(message["content"])
                     if isinstance(content_as_list, list):
-                        # If the content is a list, process each nested message
                         for nested_message in content_as_list:
                             conversation_parts.append(
                                 self.format_message(nested_message)
                             )
                     else:
-                        # If the content is not a list, append it directly
                         conversation_parts.append(self.format_message(message))
                 except (ValueError, SyntaxError):
-                    # If evaluation fails or content is not a list/dict string, append the message directly
                     conversation_parts.append(self.format_message(message))
             else:
-                # For all other messages, use the existing formatting logic
                 conversation_parts.append(self.format_message(message))
 
         return llama_message + "".join(conversation_parts)
 
     def format_message(self, message: dict) -> str:
-        """Format a single message for the conversation."""
+        """
+        Formats a single message dictionary into a structured string for a conversation.
+
+        The formatting depends on the content of the message, such as tool calls,
+        function calls, or simple user/assistant messages. Each type of message
+        is formatted with specific headers and tags.
+
+        Args:
+            message (dict): A dictionary containing message details. Expected keys
+                            include "role", "content", and optionally "tool_calls",
+                            "tool_call_id", or "function_call".
+
+        Returns:
+            str: A formatted string representing the message. Returns an empty
+            string if the message cannot be formatted.
+        """
         if "tool_calls" in message:
             for tool_call in message["tool_calls"]:
                 function_name = tool_call["function"]["name"]

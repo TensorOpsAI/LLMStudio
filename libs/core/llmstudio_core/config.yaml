@@ -208,22 +208,26 @@ providers:
         mode: chat
         max_completion_tokens: 128000
         input_token_cost: 0.000015
+        cached_token_cost: 0.0000075
         output_token_cost: 0.000060
       o1-mini:
         mode: chat
         max_completion_tokens: 128000
         input_token_cost: 0.000003
+        cached_token_cost: 0.0000015
         output_token_cost: 0.000012
       gpt-4o-mini:
         mode: chat
         max_tokens: 128000
         input_token_cost: 0.00000015
+        cached_token_cost: 0.000000075
         output_token_cost: 0.00000060
       gpt-4o:
         mode: chat
         max_tokens: 128000
-        input_token_cost: 0.000005
-        output_token_cost: 0.000015
+        input_token_cost: 0.0000025
+        cached_token_cost: 0.00000125
+        output_token_cost: 0.00001
       gpt-4-turbo:
         mode: chat
         max_tokens: 128000
@@ -294,11 +298,13 @@ providers:
         mode: chat
         max_completion_tokens: 128000
         input_token_cost: 0.0000165
+        cached_token_cost: 0.00000825
         output_token_cost: 0.000066
       o1-mini:
         mode: chat
         max_completion_tokens: 128000
         input_token_cost: 0.0000033
+        cached_token_cost: 0.00000165
         output_token_cost: 0.0000132
       gpt-4o-mini:
         mode: chat
@@ -308,8 +314,9 @@ providers:
       gpt-4o:
         mode: chat
         max_tokens: 128000
-        input_token_cost: 0.000005
-        output_token_cost: 0.000015
+        input_token_cost: 0.0000025
+        cached_token_cost: 0.00000125
+        output_token_cost: 0.00001
       gpt-4-turbo:
         mode: chat
         max_tokens: 128000

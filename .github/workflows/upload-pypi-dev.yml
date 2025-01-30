@@ -1,4 +1,4 @@
-name: PyPI prerelease and build/push Docker image.
+name: PyPI prerelease any module.
 
 on:
   workflow_dispatch:

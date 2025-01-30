@@ -11,7 +11,7 @@ from llmstudio_core.providers import _load_providers_config
 from llmstudio_core.providers.provider import provider_registry
 from llmstudio_proxy.config import ENGINE_HOST, ENGINE_PORT
 from llmstudio_proxy.utils import get_current_version
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 ENGINE_HEALTH_ENDPOINT = "/health"
 ENGINE_TITLE = "LLMstudio Proxy API"
@@ -29,9 +29,11 @@ class CostRange(BaseModel):
 
 class ModelConfig(BaseModel):
     mode: str
-    max_tokens: int
-    input_token_cost: Union[float, List[CostRange]]
-    output_token_cost: Union[float, List[CostRange]]
+    max_tokens: Optional[int] = Field(default=None, alias="max_completion_tokens")
+    max_completion_tokens: Optional[int] = None
+    input_token_cost: Union[float, List["CostRange"]]
+    cached_token_cost: Optional[Union[float, List["CostRange"]]] = None
+    output_token_cost: Union[float, List["CostRange"]]
 
 
 class ProviderConfig(BaseModel):
